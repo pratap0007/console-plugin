@@ -32,6 +32,11 @@ export type ApprovalTaskKind = K8sResourceCommon & {
       input: ApproverInput;
       message?: string;
       name: string;
+      type: 'User' | 'Group';
+      users?: {
+        input: ApproverInput;
+        name: string;
+      }[];
     }[];
     numberOfApprovalsRequired: number;
     description?: string;
@@ -39,9 +44,19 @@ export type ApprovalTaskKind = K8sResourceCommon & {
   status?: {
     state: ApproverResponse;
     approvers: string[];
+    approvalsReceived?: number;
+    approvalsRequired?: number;
+    startTime?: string;
     approversResponse?: {
       name: string;
       response: ApproverResponse;
+      message?: string;
+      type: 'User' | 'Group';
+      groupMembers?: {
+        name: string;
+        response: ApproverResponse;
+        message?: string;
+      }[];
     }[];
   };
 };
