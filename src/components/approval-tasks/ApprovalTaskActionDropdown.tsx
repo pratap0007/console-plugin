@@ -19,6 +19,7 @@ import { ApprovalTaskModel } from '../../models';
 import { approvalModal } from './modal';
 import { ApproverStatusResponse } from '../../types';
 import { useGetActiveUser } from '../hooks/hooks';
+import { isUserAuthorizedForApproval } from '../utils/approval-group-utils';
 
 type ApprovalTaskActionDropdownProps = {
   approvalTask: ApprovalTaskKind;
@@ -37,6 +38,9 @@ const ApprovalTaskActionDropdown: React.FC<ApprovalTaskActionDropdownProps> = ({
     status: { approvers, state },
   } = approvalTask;
   const [isOpen, setIsOpen] = React.useState(false);
+  const [isGroupAuthorized, setIsGroupAuthorized] = React.useState<
+    boolean | null
+  >(null);
   const onToggle = () => {
     setIsOpen(!isOpen);
   };
@@ -69,10 +73,32 @@ const ApprovalTaskActionDropdown: React.FC<ApprovalTaskActionDropdownProps> = ({
     namespace,
   });
 
+  // Check group-based authorization
+  React.useEffect(() => {
+    const checkAuthorization = async () => {
+      if (currentUser && approvers) {
+        try {
+          const authorized = await isUserAuthorizedForApproval(
+            currentUser,
+            approvers,
+          );
+          setIsGroupAuthorized(authorized);
+        } catch (error) {
+          console.error('Error checking group authorization:', error);
+          setIsGroupAuthorized(false);
+        }
+      } else {
+        setIsGroupAuthorized(false);
+      }
+    };
+    checkAuthorization();
+  }, [currentUser, approvers]);
+
   const isDropdownDisabled =
     !canApproveAndRejectResource ||
     state !== ApproverStatusResponse.Pending ||
-    !approvers?.find((approver) => approver === currentUser);
+    isGroupAuthorized === null || // Still loading
+    !isGroupAuthorized; // Not authorized (includes both direct user and group checks)
 
   const tooltipContent = () => {
     if (!canApproveAndRejectResource) {
@@ -84,7 +110,10 @@ const ApprovalTaskActionDropdown: React.FC<ApprovalTaskActionDropdownProps> = ({
     if (state !== ApproverStatusResponse.Pending) {
       return t(`PipelineRun has been {{state}}`, { state });
     }
-    if (!approvers?.find((approver) => approver === currentUser)) {
+    if (isGroupAuthorized === null) {
+      return t('Checking authorization...');
+    }
+    if (!isGroupAuthorized) {
       return t('User not an approver');
     }
     return t('Permission denied');

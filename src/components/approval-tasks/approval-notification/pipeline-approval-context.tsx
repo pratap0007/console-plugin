@@ -15,6 +15,7 @@ import { ApprovalTaskModel } from '../../../models';
 import { ApprovalLabels, ApprovalFields } from '../../../consts';
 import { useToast } from '../../toast/useToast';
 import { useGetActiveUser } from '../../hooks/hooks';
+import { isUserAuthorizedForApproval } from '../../utils/approval-group-utils';
 
 const getPipelineRunsofApprovals = (
   approvalTasks: ApprovalTaskKind[],
@@ -30,12 +31,12 @@ const getPipelineRunsofApprovals = (
   return pipelineRuns;
 };
 
-const checkUserIsApprover = (
+const checkUserIsApprover = async (
   approvalTask: ApprovalTaskKind,
   username: string,
-): boolean => {
+): Promise<boolean> => {
   const approverList = approvalTask?.status?.approvers ?? [];
-  return approverList?.includes(username);
+  return await isUserAuthorizedForApproval(username, approverList);
 };
 
 export const PipelineApprovalContext = React.createContext({});
@@ -72,76 +73,101 @@ export const usePipelineApprovalToast = () => {
   }, [approvalTasks, currentUser, t, addToast, removeToast]);
 
   React.useEffect(() => {
-    let toastID = '';
-    const userApprovalTasksInWait = approvalTasks.filter(
-      (approvalTask) =>
-        checkUserIsApprover(approvalTask, currentUser) &&
-        approvalTask?.status?.state === ApprovalStatus.RequestSent,
-    );
+    const processApprovalTasks = async () => {
+      let toastID = '';
 
-    const [currentNsApprovalTasks, otherNsApprovalTasks]: [
-      ApprovalTaskKind[],
-      ApprovalTaskKind[],
-    ] = userApprovalTasksInWait.reduce(
-      (acc, approvalTask) => {
-        approvalTask?.metadata?.namespace === namespace
-          ? acc[0].push(approvalTask)
-          : acc[1].push(approvalTask);
-        return acc;
-      },
-      [[], []],
-    );
-
-    if (currentNsApprovalTasks.length > 0) {
-      const uniquePipelineRuns = new Set(
-        getPipelineRunsofApprovals(currentNsApprovalTasks),
-      ).size;
-
-      if (uniquePipelineRuns > 0) {
-        toastID = addToast({
-          variant: AlertVariant.custom,
-          title: t('Task approval required'),
-          content: (
-            <ApprovalToastContent
-              type="current"
-              uniquePipelineRuns={uniquePipelineRuns}
-              devconsolePath={devconsolePath}
-            />
-          ),
-          timeout: 25000,
-          dismissible: true,
-        }) as any;
+      // Filter approval tasks for current user with async group checking
+      const userApprovalTasksInWait = [];
+      for (const approvalTask of approvalTasks) {
+        if (approvalTask?.status?.state === ApprovalStatus.RequestSent) {
+          try {
+            const isApprover = await checkUserIsApprover(
+              approvalTask,
+              currentUser,
+            );
+            if (isApprover) {
+              userApprovalTasksInWait.push(approvalTask);
+            }
+          } catch (error) {
+            console.warn('Error checking user approval authorization:', error);
+          }
+        }
       }
-      setCurrentToasts((toasts) => ({
-        ...toasts,
-        current: { toastId: toastID },
-      }));
-    }
 
-    if (otherNsApprovalTasks.length > 0) {
-      const uniquePipelineRuns = new Set(
-        getPipelineRunsofApprovals(otherNsApprovalTasks),
-      ).size;
+      const [currentNsApprovalTasks, otherNsApprovalTasks]: [
+        ApprovalTaskKind[],
+        ApprovalTaskKind[],
+      ] = userApprovalTasksInWait.reduce(
+        (acc, approvalTask) => {
+          approvalTask?.metadata?.namespace === namespace
+            ? acc[0].push(approvalTask)
+            : acc[1].push(approvalTask);
+          return acc;
+        },
+        [[], []],
+      );
 
-      if (uniquePipelineRuns > 0) {
-        toastID = addToast({
-          variant: AlertVariant.custom,
-          title: t('Task approval required'),
-          content: (
-            <ApprovalToastContent
-              type="other"
-              uniquePipelineRuns={uniquePipelineRuns}
-              adminconsolePath={adminconsolePath}
-            />
-          ),
-          timeout: 25000,
-          dismissible: true,
-        });
+      if (currentNsApprovalTasks.length > 0) {
+        const uniquePipelineRuns = new Set(
+          getPipelineRunsofApprovals(currentNsApprovalTasks),
+        ).size;
+
+        if (uniquePipelineRuns > 0) {
+          toastID = addToast({
+            variant: AlertVariant.custom,
+            title: t('Task approval required'),
+            content: (
+              <ApprovalToastContent
+                type="current"
+                uniquePipelineRuns={uniquePipelineRuns}
+                devconsolePath={devconsolePath}
+              />
+            ),
+            timeout: 25000,
+            dismissible: true,
+          }) as any;
+        }
+        setCurrentToasts((toasts) => ({
+          ...toasts,
+          current: { toastId: toastID },
+        }));
       }
-      setCurrentToasts((toasts) => ({
-        ...toasts,
-        other: { toastId: toastID },
-      }));
-    }
-  }, [approvalTasks, currentUser, t, addToast, removeToast]);
+
+      if (otherNsApprovalTasks.length > 0) {
+        const uniquePipelineRuns = new Set(
+          getPipelineRunsofApprovals(otherNsApprovalTasks),
+        ).size;
+
+        if (uniquePipelineRuns > 0) {
+          toastID = addToast({
+            variant: AlertVariant.custom,
+            title: t('Task approval required'),
+            content: (
+              <ApprovalToastContent
+                type="other"
+                uniquePipelineRuns={uniquePipelineRuns}
+                adminconsolePath={adminconsolePath}
+              />
+            ),
+            timeout: 25000,
+            dismissible: true,
+          });
+        }
+        setCurrentToasts((toasts) => ({
+          ...toasts,
+          other: { toastId: toastID },
+        }));
+      }
+    };
+
+    processApprovalTasks();
+  }, [
+    approvalTasks,
+    currentUser,
+    namespace,
+    t,
+    addToast,
+    devconsolePath,
+    adminconsolePath,
+  ]);
 };

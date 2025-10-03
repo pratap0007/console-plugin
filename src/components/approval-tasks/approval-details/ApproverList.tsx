@@ -21,6 +21,7 @@ export interface ApproverBadgeProps {
 }
 
 const ApproverBadge: React.FC<ApproverBadgeProps> = ({ approver, status }) => {
+  //const { t } = useTranslation('plugin__pipelines-console-plugin');
   const badgeClass = cx({
     'pipelines-approval-approver__wait':
       status === ApproverStatusResponse.Pending,
@@ -47,7 +48,9 @@ const ApproverBadge: React.FC<ApproverBadgeProps> = ({ approver, status }) => {
         </div>
       }
     >
-      {approver}
+      {approver.includes('group:')
+        ? 'Group' + ': ' + approver.replace('group:', '')
+        : 'User' + ': ' + approver}
     </Label>
   );
 };
