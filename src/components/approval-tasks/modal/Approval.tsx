@@ -2,13 +2,14 @@ import * as React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Formik, FormikValues, FormikHelpers } from 'formik';
 import { Link } from 'react-router-dom-v5-compat';
-import { ResourceIcon, k8sPatch } from '@openshift-console/dynamic-plugin-sdk';
+import { ResourceIcon } from '@openshift-console/dynamic-plugin-sdk';
 import { ApprovalTaskModel, PipelineRunModel } from '../../../models';
 import { getReferenceForModel } from '../../pipelines-overview/utils';
-import { ApprovalStatus, ApprovalTaskKind } from '../../../types';
+import { ApprovalTaskKind } from '../../../types';
 import { ModalComponent } from '@openshift-console/dynamic-plugin-sdk/lib/app/modal-support/ModalProvider';
 import { ModalWrapper } from '../../modals/modal';
 import ApprovalModal from './ApprovalModal';
+import { patchApprovalTask } from '../../utils/approval-patch-utils';
 
 import './ApprovalModal.scss';
 
@@ -40,29 +41,12 @@ const Approval: ModalComponent<ApprovalProps> = ({
     values: FormikValues,
     action: FormikHelpers<FormikValues>,
   ) => {
-    const updatedApprovers = approvers.map((approver) => {
-      if (approver.name === userName) {
-        return {
-          ...approver,
-          input:
-            type === 'approve'
-              ? ApprovalStatus.Accepted
-              : ApprovalStatus.Rejected,
-          ...(values.reason && { message: values.reason }),
-        };
-      }
-      return approver;
-    });
-    return k8sPatch({
-      model: ApprovalTaskModel,
-      resource,
-      data: [
-        {
-          path: '/spec/approvers',
-          op: 'replace',
-          value: updatedApprovers,
-        },
-      ],
+    const input = type === 'approve' ? 'approve' : 'reject';
+    
+    return patchApprovalTask(resource, {
+      userName,
+      input,
+      message: values.reason,
     })
       .then(() => {
         closeModal();

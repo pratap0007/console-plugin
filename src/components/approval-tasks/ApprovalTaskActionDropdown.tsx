@@ -19,6 +19,10 @@ import { ApprovalTaskModel } from '../../models';
 import { approvalModal } from './modal';
 import { ApproverStatusResponse } from '../../types';
 import { useGetActiveUser } from '../hooks/hooks';
+import {
+  findUserInGroups,
+  isDirectApprover,
+} from '../utils/approval-patch-utils';
 
 type ApprovalTaskActionDropdownProps = {
   approvalTask: ApprovalTaskKind;
@@ -69,10 +73,24 @@ const ApprovalTaskActionDropdown: React.FC<ApprovalTaskActionDropdownProps> = ({
     namespace,
   });
 
+  // Check if current user can approve (either direct approver or group member)
+  const canUserApprove = () => {
+    if (!currentUser) return false;
+
+    // Check if user is a direct approver
+    if (isDirectApprover(approvalTask, currentUser)) {
+      return true;
+    }
+
+    // Check if user is a member of any group
+    const groupInfo = findUserInGroups(approvalTask, currentUser);
+    return groupInfo !== null;
+  };
+
   const isDropdownDisabled =
     !canApproveAndRejectResource ||
     state !== ApproverStatusResponse.Pending ||
-    !approvers?.find((approver) => approver === currentUser);
+    !canUserApprove();
 
   const tooltipContent = () => {
     if (!canApproveAndRejectResource) {
@@ -84,7 +102,7 @@ const ApprovalTaskActionDropdown: React.FC<ApprovalTaskActionDropdownProps> = ({
     if (state !== ApproverStatusResponse.Pending) {
       return t(`PipelineRun has been {{state}}`, { state });
     }
-    if (!approvers?.find((approver) => approver === currentUser)) {
+    if (!canUserApprove()) {
       return t('User not an approver');
     }
     return t('Permission denied');
