@@ -48,7 +48,7 @@ const ApproverBadge: React.FC<ApproverBadgeProps> = ({ approver, status }) => {
         </div>
       }
     >
-      {approver.includes('group:')
+      {approver.includes('group:') // need to handle it based on latest approval task yaml
         ? 'Group' + ': ' + approver.replace('group:', '')
         : 'User' + ': ' + approver}
     </Label>

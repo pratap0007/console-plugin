@@ -40,19 +40,65 @@ const Approval: ModalComponent<ApprovalProps> = ({
     values: FormikValues,
     action: FormikHelpers<FormikValues>,
   ) => {
+    const approvalInput =
+      type === 'approve' ? ApprovalStatus.Accepted : ApprovalStatus.Rejected;
+
     const updatedApprovers = approvers.map((approver) => {
-      if (approver.name === userName) {
+      // Check if current user is a direct User type approver
+      if (approver.type === 'User' && approver.name === userName) {
         return {
           ...approver,
-          input:
-            type === 'approve'
-              ? ApprovalStatus.Accepted
-              : ApprovalStatus.Rejected,
+          input: approvalInput,
           ...(values.reason && { message: values.reason }),
         };
       }
+
+      // Check if current user is a member of a Group type approver
+      if (approver.type === 'Group') {
+        // if type is group then chceck 
+        // the current user in the users list then don't update the users list
+        // just update the input and message 
+        // if current user is not in the approvers users list then update the users
+        // and also update the  user update
+        // check only two conditions
+        // if type is group then proceede with code 
+
+
+        // show the approve options if logged in current user in the approvers list
+        // or if check the user user is any of the group 
+        // find the all users from thatv group and check with current users
+        // thre could be multiple groups in that case handle the 
+        // group name and  users list  then enable the user to approve or reject
+        const groupName = approver.name;
+        const updatedUsers = approver.users.map((user) => {
+          if (user.name === userName) {
+            return {
+              ...user,
+              input: approvalInput,
+              ...(values.reason && {message: values.reason}),
+              name: userName,
+            };
+          }
+          return user;
+        });
+
+        // Check if any user in the group was updated
+        const userWasUpdated = approver.users.some(
+          (user) => user.name === userName,
+        );
+        if (userWasUpdated) {
+          return {
+            ...approver,
+            users: updatedUsers,
+            input: approvalInput,
+            ...(values.reason && { message: values.reason }),
+          };
+        }
+      }
+
       return approver;
     });
+
     return k8sPatch({
       model: ApprovalTaskModel,
       resource,

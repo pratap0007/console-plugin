@@ -17,8 +17,9 @@ export interface GroupKind {
  */
 export const isUserAuthorizedForApproval = async (
   currentUser: string,
-  approvers: string[],
+  approvers: string[], // do we need complete approval details??
 ): Promise<boolean> => {
+  // can be move this in a common function
   if (!currentUser || !approvers || approvers.length === 0) {
     return false;
   }
@@ -29,6 +30,7 @@ export const isUserAuthorizedForApproval = async (
   }
 
   // Check group-based assignments (new functionality)
+  // can we move this logic in a separate function and it can be resused while doing patch operation?
   const groupApprovers = approvers.filter((approver) =>
     approver.startsWith('group:'),
   );
