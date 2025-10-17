@@ -2,15 +2,24 @@ import * as React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Formik, FormikValues, FormikHelpers } from 'formik';
 import { Link } from 'react-router-dom-v5-compat';
-import { ResourceIcon, k8sPatch } from '@openshift-console/dynamic-plugin-sdk';
-import { ApprovalTaskModel, PipelineRunModel } from '../../../models';
+import {
+  ResourceIcon,
+  k8sGet,
+  k8sPatch,
+} from '@openshift-console/dynamic-plugin-sdk';
+import {
+  ApprovalTaskModel,
+  GroupModel,
+  PipelineRunModel,
+} from '../../../models';
 import { getReferenceForModel } from '../../pipelines-overview/utils';
 import { ApprovalStatus, ApprovalTaskKind } from '../../../types';
 import { ModalComponent } from '@openshift-console/dynamic-plugin-sdk/lib/app/modal-support/ModalProvider';
 import { ModalWrapper } from '../../modals/modal';
 import ApprovalModal from './ApprovalModal';
-
+import UserApprover from './../../../../src/types/';
 import './ApprovalModal.scss';
+import { GroupKind } from 'src/components/utils/approval-group-utils';
 
 type ApprovalProps = {
   resource: ApprovalTaskKind;
@@ -40,8 +49,9 @@ const Approval: ModalComponent<ApprovalProps> = ({
     values: FormikValues,
     action: FormikHelpers<FormikValues>,
   ) => {
-    const updatedApprovers = approvers.map((approver) => {
-      if (approver.name === userName) {
+    const updatedApprovers = approvers.map(async (approver) => {
+      if (approver.name === userName && approver.type === 'User') {
+        console.log('user approved..');
         return {
           ...approver,
           input:
@@ -50,9 +60,67 @@ const Approval: ModalComponent<ApprovalProps> = ({
               : ApprovalStatus.Rejected,
           ...(values.reason && { message: values.reason }),
         };
+      } else if (approver.type === 'Group') {
+        ///
+
+        // try {
+        //   const authorized = await isGroupUserUpdated(
+        //     currentUser,
+        //     approver.message,
+        //   );
+        // } catch (error) {
+        //   console.error('Error checking group authorization:', error);
+        // }
+        try {
+          const group = await k8sGet<GroupKind>({
+            model: GroupModel,
+            name: approver.name,
+          });
+
+          console.log('groupss', group);
+          // check current loggeded in user in the list or not
+          if (group.users && group.users.includes(userName)) {
+            // user we want to ensure exists
+            const newUser: UserApprover = {
+              name: userName,
+              input:
+                type === 'approve'
+                  ? ApprovalStatus.Accepted
+                  : ApprovalStatus.Rejected,
+            };
+            // check if user "abc" already exists
+            const userExists = approver.users?.some(
+              (user) => user.name === newUser.name,
+            );
+            return {
+              ...approver,
+              input:
+                type === 'approve'
+                  ? ApprovalStatus.Accepted
+                  : ApprovalStatus.Rejected,
+              ...(values.reason && { message: values.reason }),
+              users: userExists
+                ? approver.users
+                : [...(approver.users ?? []), newUser],
+            };
+          }
+        } catch (error) {
+          // Log error but continue checking other groups
+          console.warn(
+            `Failed to check group membership for group: ${approver.name}`,
+            error,
+          );
+        }
+
+        // const groupApprovers = approvers.filter(
+        //   (approver) => approver.type === 'Group',
+        // );
+        // return approver;
       }
       return approver;
     });
+
+    console.log('updatedapproveers------before-patch', updatedApprovers);
     return k8sPatch({
       model: ApprovalTaskModel,
       resource,

@@ -1,4 +1,5 @@
 import { k8sGet } from '@openshift-console/dynamic-plugin-sdk';
+import { Approver } from 'src/types';
 import { GroupModel } from '../../models';
 
 export interface GroupKind {
@@ -17,36 +18,41 @@ export interface GroupKind {
  */
 export const isUserAuthorizedForApproval = async (
   currentUser: string,
-  approvers: string[],
+  approvers: Approver[],
 ): Promise<boolean> => {
   if (!currentUser || !approvers || approvers.length === 0) {
     return false;
   }
 
   // Check direct user assignment (existing functionality)
-  if (approvers.includes(currentUser)) {
+  if (
+    approvers.some(
+      (approver) => approver.name === currentUser && approver.type == 'User',
+    )
+  ) {
     return true;
   }
 
   // Check group-based assignments (new functionality)
-  const groupApprovers = approvers.filter((approver) =>
-    approver.startsWith('group:'),
+  const groupApprovers = approvers.filter(
+    (approver) => approver.type === 'Group',
   );
 
   for (const groupApprover of groupApprovers) {
-    const groupName = groupApprover.replace('group:', '');
+    // const groupName = groupApprover.replace('group:', '');
     try {
       const group = await k8sGet<GroupKind>({
         model: GroupModel,
-        name: groupName,
+        name: groupApprover.name,
       });
+      console.log('usersssss', group.users);
       if (group.users && group.users.includes(currentUser)) {
         return true;
       }
     } catch (error) {
       // Log error but continue checking other groups
       console.warn(
-        `Failed to check group membership for group: ${groupName}`,
+        `Failed to check group membership for group: ${groupApprover.name}`,
         error,
       );
     }
