@@ -10,7 +10,7 @@ import {
 import { alphanumericCompare } from './utils';
 import { useTranslation } from 'react-i18next';
 
-import './PipelinesOverview.scss';
+//import './PipelinesOverview.scss';
 import {
   useFlag,
   useK8sWatchResource,
@@ -65,8 +65,10 @@ const NameSpaceDropdown: React.FC<NameSpaceDropdownProps> = ({
   }, [projects, projectsLoaded]);
 
   return (
-    <>
-      <label className="project-dropdown-label">{t('Project')}</label>
+    <div className="form-group">
+      <div>
+        <label>{t('Project')}</label>
+      </div>
       <Dropdown
         isOpen={isOpen}
         onOpenChange={(isOpen: boolean) => setValue(isOpen)}
@@ -96,7 +98,7 @@ const NameSpaceDropdown: React.FC<NameSpaceDropdownProps> = ({
           ))}
         </DropdownList>
       </Dropdown>
-    </>
+    </div>
   );
 };
 

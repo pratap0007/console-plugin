@@ -12,7 +12,12 @@ import {
   ChartThemeColor,
   ChartVoronoiContainer,
 } from '@patternfly/react-charts/victory';
-import { Alert, Card, CardBody, CardTitle } from '@patternfly/react-core';
+import {
+  Alert,
+  Card,
+  CardBody,
+  CardTitle,
+} from '@patternfly/react-core';
 import { useFlag } from '@openshift-console/dynamic-plugin-sdk';
 import {
   formatDate,
@@ -27,6 +32,7 @@ import { DataType, FLAGS, SummaryResponse } from '../../types';
 import { ALL_NAMESPACES_KEY } from '../../consts';
 import { getFilter, useInterval } from './utils';
 import { LoadingInline } from '../Loading';
+import { useResizeObserver } from '../hooks/useScrollShadows';
 
 interface PipelinesRunsNumbersChartProps {
   namespace?: string;
@@ -36,7 +42,6 @@ interface PipelinesRunsNumbersChartProps {
   parentName?: string;
   bordered?: boolean;
   kind?: string;
-  width?: number;
 }
 type DomainType = { x?: DomainTuple; y?: DomainTuple };
 
@@ -74,7 +79,6 @@ const PipelinesRunsNumbersChart: React.FC<PipelinesRunsNumbersChartProps> = ({
   parentName,
   bordered,
   kind,
-  width = 530,
 }) => {
   const { t } = useTranslation('plugin__pipelines-console-plugin');
   const isDevConsoleProxyAvailable = useFlag(FLAGS.DEVCONSOLE_PROXY);
@@ -93,6 +97,36 @@ const PipelinesRunsNumbersChart: React.FC<PipelinesRunsNumbersChartProps> = ({
     string | undefined
   >();
   const abortControllerRef = React.useRef<AbortController>();
+
+  // Responsive chart sizing
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = React.useState(400);
+  const rafRef = React.useRef<number>();
+
+  const handleResize = React.useCallback(() => {
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+    }
+    rafRef.current = requestAnimationFrame(() => {
+      if (containerRef.current) {
+        const newWidth = containerRef.current.clientWidth;
+        setContainerWidth((prevWidth) =>
+          prevWidth !== newWidth ? newWidth : prevWidth,
+        );
+      }
+    });
+  }, []);
+
+  useResizeObserver(handleResize, containerRef.current);
+
+  React.useEffect(() => {
+    handleResize();
+    return () => {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+      }
+    };
+  }, [handleResize]);
 
   if (namespace == ALL_NAMESPACES_KEY) {
     namespace = '-';
@@ -238,8 +272,9 @@ const PipelinesRunsNumbersChart: React.FC<PipelinesRunsNumbersChartProps> = ({
           'pipeline-overview__number-of-plr-card': !pipelineRunsChartError,
           'card-border': bordered,
         })}
+        style={{ height: '220px', overflow: 'hidden' }}
       >
-        <CardTitle className="pipeline-overview__number-of-plr-card__title">
+        <CardTitle className="pf-v6-u-pb-0">
           <span>{t('Number of PipelineRuns')}</span>
         </CardTitle>
         <CardBody
@@ -256,7 +291,7 @@ const PipelinesRunsNumbersChart: React.FC<PipelinesRunsNumbersChartProps> = ({
               className="pf-v6-u-mb-md pf-v6-u-ml-lg pf-v6-u-mt-lg"
             />
           ) : (
-            <div className="pipeline-overview__number-of-plr-card__bar-chart-div">
+            <div ref={containerRef} style={{ width: '100%' }}>
               {loaded ? (
                 <Chart
                   containerComponent={
@@ -269,11 +304,12 @@ const PipelinesRunsNumbersChart: React.FC<PipelinesRunsNumbersChartProps> = ({
                   domain={domainValue}
                   domainPadding={{ x: [30, 25] }}
                   height={145}
-                  width={width}
+                  width={containerWidth}
                   padding={{
                     top: 10,
                     bottom: 55,
-                    left: 50,
+                    left: 40,
+                    right: 10,
                   }}
                   themeColor={ChartThemeColor.blue}
                 >
@@ -285,11 +321,17 @@ const PipelinesRunsNumbersChart: React.FC<PipelinesRunsNumbersChartProps> = ({
                   />
                   <ChartAxis dependentAxis style={yAxisStyle} />
                   <ChartGroup>
-                    <ChartBar data={chartData} barWidth={18} />
+                    <ChartBar
+                      data={chartData}
+                      barWidth={Math.max(
+                        4,
+                        Math.min(18, (containerWidth - 80) / tickValues.length - 4),
+                      )}
+                    />
                   </ChartGroup>
                 </Chart>
               ) : (
-                <div className="pipeline-overview__number-of-plr-card__loading pf-v6-u-h-100">
+                <div className="pipeline-overview__number-of-plr-card__loading pf-v6-u-pl-md pf-v6-u-h-100">
                   <LoadingInline />
                 </div>
               )}

@@ -23,7 +23,7 @@ import {
   usePersistedTimespanWithUrl,
   usePersistedIntervalWithUrl,
 } from '../hooks/usePersistedFiltersForPipelineOverview';
-import './PipelinesOverview.scss';
+//import './PipelinesOverview.scss';
 
 const PipelinesOverviewPageK8s: React.FC = () => {
   const { t } = useTranslation('plugin__pipelines-console-plugin');
