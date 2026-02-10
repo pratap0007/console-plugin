@@ -16,7 +16,6 @@ import { SummaryProps, getTotalPipelineRuns } from './utils';
 import { PipelineModel, RepositoryModel } from '../../models';
 import { ALL_NAMESPACES_KEY } from '../../consts';
 
-import './PipelineRunsTotalCard.scss';
 import { MetricsQueryPrefix, PipelineQuery } from '../pipelines-metrics/utils';
 import {
   usePipelineMetricsForAllNamespacePoll,
@@ -116,10 +115,7 @@ const PipelineRunsTotalCardK8s: React.FC<PipelinesRunsDurationProps> = ({
                     {t('Runs in pipelines')}
                   </span>
                 </GridItem>
-                <GridItem
-                  span={3}
-                  className="pipeline-overview__totals-card__value"
-                >
+                <GridItem span={3} className="pf-v6-u-text-align-end">
                   {loadingTotalPipelineRunsData ? <LoadingInline /> : '-'}
                 </GridItem>
               </Grid>
@@ -135,10 +131,7 @@ const PipelineRunsTotalCardK8s: React.FC<PipelinesRunsDurationProps> = ({
                     {t('Runs in repositories')}
                   </span>
                 </GridItem>
-                <GridItem
-                  span={3}
-                  className="pipeline-overview__totals-card__value"
-                >
+                <GridItem span={3} className="pf-v6-u-text-align-end">
                   {loadingTotalPipelineRunsData ? <LoadingInline /> : '-'}
                 </GridItem>
               </Grid>
@@ -149,10 +142,7 @@ const PipelineRunsTotalCardK8s: React.FC<PipelinesRunsDurationProps> = ({
                     {t('Total runs')}
                   </span>
                 </GridItem>
-                <GridItem
-                  span={3}
-                  className="pipeline-overview__totals-card__value"
-                >
+                <GridItem span={3} className="pf-v6-u-text-align-end">
                   {loadingTotalPipelineRunsData ? (
                     <LoadingInline />
                   ) : (

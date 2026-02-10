@@ -24,7 +24,7 @@ import {
 
 import { ALL_NAMESPACES_KEY } from '../../consts';
 
-import './PipelineRunsDurationCard.scss';
+// import './PipelineRunsDurationCard.scss';
 import {
   usePipelineMetricsForAllNamespacePoll,
   usePipelineMetricsForNamespaceForPipelinePoll,

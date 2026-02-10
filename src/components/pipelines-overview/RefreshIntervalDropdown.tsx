@@ -10,7 +10,7 @@ import {
 import { IntervalOptions } from './utils';
 import { formatPrometheusDuration, parsePrometheusDuration } from './dateTime';
 
-import './PipelinesOverview.scss';
+//import './PipelinesOverview.scss';
 
 const OFF_KEY = 'OFF_KEY';
 

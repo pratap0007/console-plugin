@@ -34,7 +34,7 @@ import {
   parsePrometheusDuration,
   monthYear,
 } from './dateTime';
-import './PipelinesOverview.scss';
+//import './PipelinesOverview.scss';
 import { ALL_NAMESPACES_KEY } from '../../consts';
 import { OutlinedQuestionCircleIcon } from '@patternfly/react-icons';
 import { PrometheusResponse } from '@openshift-console/dynamic-plugin-sdk';
